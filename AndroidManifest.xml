@@ -16,7 +16,7 @@
 
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
       android:versionCode="1"
-      android:versionName="1.0" package="com.example.android.accelerometerplay.joytest">
+      android:versionName="1.0" package="com.input.events.logger.debug.app">
     <application android:icon="@drawable/icon" android:label="@string/app_name">
         <activity android:name=".AccelerometerPlayActivity"
                   android:label="@string/app_name"

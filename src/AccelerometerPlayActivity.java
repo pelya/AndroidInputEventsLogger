@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.example.android.accelerometerplay.joytest;
+package com.input.events.logger.debug.app;
 
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
