@@ -104,9 +104,9 @@ public class AccelerometerPlayActivity extends Activity {
         new Thread(new Runnable(){
             public void run() {
                 while(true) {
-                    updateText();
+                    int sleep = updateText();
                     try {
-                        Thread.sleep(500);
+                        Thread.sleep(sleep);
                     } catch(Exception e) {}
                 }
         }}).start();
@@ -145,50 +145,21 @@ public class AccelerometerPlayActivity extends Activity {
 	@Override
 	public boolean dispatchGenericMotionEvent (MotionEvent event)
 	{
-		logEvent(event, true);
+		logMotionEvent(event, true);
 		return true;
 	}
 
 	@Override
 	public boolean dispatchTouchEvent(final MotionEvent event)
 	{
-		logEvent(event, false);
+		logMotionEvent(event, false);
 		return true;
 	}
 
-	private void logEvent(MotionEvent event, boolean gen)
+	private void logMotionEvent(MotionEvent event, boolean gen)
 	{
-		String s = gen ? "GenericMotionEvent from " :  "Event from ";
-		s += printDevice(event.getDeviceId()) + " ";
-		if( (event.getSource() & InputDevice.SOURCE_DPAD) == InputDevice.SOURCE_DPAD )
-			s += "dpad ";
-		if( (event.getSource() & InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD )
-			s += "gamepad ";
-		if( (event.getSource() & InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK )
-			s += "joystick ";
-		if( (event.getSource() & InputDevice.SOURCE_KEYBOARD) == InputDevice.SOURCE_KEYBOARD )
-			s += "keyboard ";
-		if( (event.getSource() & InputDevice.SOURCE_MOUSE) == InputDevice.SOURCE_MOUSE )
-			s += "mouse ";
-		if( (event.getSource() & InputDevice.SOURCE_STYLUS) == InputDevice.SOURCE_STYLUS )
-			s += "stylus ";
-		if( (event.getSource() & InputDevice.SOURCE_TOUCHPAD) == InputDevice.SOURCE_TOUCHPAD )
-			s += "touchpad ";
-		if( (event.getSource() & InputDevice.SOURCE_TOUCHSCREEN) == InputDevice.SOURCE_TOUCHSCREEN )
-			s += "touchscreen ";
-		if( (event.getSource() & InputDevice.SOURCE_TRACKBALL) == InputDevice.SOURCE_TRACKBALL )
-			s += "trackball ";
-
-		if( (event.getSource() & InputDevice.SOURCE_CLASS_JOYSTICK) == InputDevice.SOURCE_CLASS_JOYSTICK )
-			s += "class joystick ";
-		if( (event.getSource() & InputDevice.SOURCE_CLASS_BUTTON) == InputDevice.SOURCE_CLASS_BUTTON )
-			s += "class button ";
-		if( (event.getSource() & InputDevice.SOURCE_CLASS_POINTER) == InputDevice.SOURCE_CLASS_POINTER )
-			s += "class pointer ";
-		if( (event.getSource() & InputDevice.SOURCE_CLASS_POSITION) == InputDevice.SOURCE_CLASS_POSITION )
-			s += "class position ";
-		if( (event.getSource() & InputDevice.SOURCE_CLASS_TRACKBALL) == InputDevice.SOURCE_CLASS_TRACKBALL )
-			s += "class trackball ";
+		String s = gen ? "GenericMotionEvent from " :  "TouchEvent from ";
+		s += printDevice(event.getDeviceId()) + " source " + printSource(event.getSource());
 
 		int pointerCount = event.getPointerCount();
 		String action;
@@ -206,13 +177,18 @@ public class AccelerometerPlayActivity extends Activity {
 			case MotionEvent.ACTION_SCROLL: action = "scroll"; break;
 			default: action = "" + event.getAction() ; break;
 		}
-		s += ", pointer count " + pointerCount + " action " + action + " mouse buttons " + event.getButtonState() +
-				" RawX " + event.getRawX() + " RawY " + event.getRawY() + "\n";
+		s += ", action " + action + " pointer count " + pointerCount +
+				" buttons " + event.getButtonState() +
+				" RawX " + event.getRawX() + " RawY " + event.getRawY() +
+				" MetaState " + event.getMetaState() + " Flags " + event.getFlags() + "\n";
 		for( int p = 0; p < pointerCount; p++ )
 		{
 			int ptrId = event.getPointerId(p);
-			s += "Pointer " + ptrId + " X " + event.getX(p) + " Y " + event.getY(p) +
-					" pressure " + event.getPressure(p) + " size " + event.getSize(p) + "\n";
+			s += "Pointer id " + ptrId + " X " + event.getX(p) + " Y " + event.getY(p) +
+					" pressure " + event.getPressure(p) + " size " + event.getSize(p) +
+					" orientation " + event.getOrientation(p) + // (float)Math.toDegrees(event.getOrientation(p)) +
+					" TouchMajor " + event.getTouchMajor(p) + " TouchMinor " + event.getTouchMinor(p) +
+					" ToolMajor " + event.getToolMajor(p) + " ToolMinor " + event.getToolMinor(p) + "\n";
 			for( int i = 0; i < 255; i++ )
 			{
 				if( event.getAxisValue(i, p) != 0.0 )
@@ -236,14 +212,26 @@ public class AccelerometerPlayActivity extends Activity {
 	@Override
 	public boolean onKeyDown(int keyCode, final KeyEvent event)
 	{
-		pushText("Key event: action " + event.getAction() + " keycode " + keyCode + " " + event.getDisplayLabel() + " from device " + printDevice(event.getDeviceId()));
+		logKeyEvent(keyCode, event, true);
 		return true;
 	}
 	
 	@Override
 	public boolean onKeyUp(int keyCode, final KeyEvent event)
 	{
-		return onKeyDown(keyCode, event);
+		logKeyEvent(keyCode, event, false);
+		return true;
+	}
+
+	private void logKeyEvent(int keyCode, KeyEvent event, boolean down)
+	{
+		String s = down ? "KeyDown event:" : "KeyUp event:";
+		s += " action " + event.getAction() + " keycode " + keyCode + " " + KeyEvent.keyCodeToString(keyCode);
+		s += " unicode " + event.getUnicodeChar() + " " + event.getDisplayLabel();
+		s += " ScanCode " + event.getScanCode();
+		s += " MetaState " + event.getMetaState() + " Flags " + event.getFlags() + " modifiers " + event.getModifiers();
+		s += " source " + printSource(event.getSource()) + " device " + printDevice(event.getDeviceId());
+		pushText(s);
 	}
 
 	public String printDevice(int id)
@@ -257,12 +245,49 @@ public class AccelerometerPlayActivity extends Activity {
 		return s;
 	}
 
+	public String printSource(int source)
+	{
+		String s = "";
+
+		if( (source & InputDevice.SOURCE_DPAD) == InputDevice.SOURCE_DPAD )
+			s += "dpad ";
+		if( (source & InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD )
+			s += "gamepad ";
+		if( (source & InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK )
+			s += "joystick ";
+		if( (source & InputDevice.SOURCE_KEYBOARD) == InputDevice.SOURCE_KEYBOARD )
+			s += "keyboard ";
+		if( (source & InputDevice.SOURCE_MOUSE) == InputDevice.SOURCE_MOUSE )
+			s += "mouse ";
+		if( (source & InputDevice.SOURCE_STYLUS) == InputDevice.SOURCE_STYLUS )
+			s += "stylus ";
+		if( (source & InputDevice.SOURCE_TOUCHPAD) == InputDevice.SOURCE_TOUCHPAD )
+			s += "touchpad ";
+		if( (source & InputDevice.SOURCE_TOUCHSCREEN) == InputDevice.SOURCE_TOUCHSCREEN )
+			s += "touchscreen ";
+		if( (source & InputDevice.SOURCE_TRACKBALL) == InputDevice.SOURCE_TRACKBALL )
+			s += "trackball ";
+
+		if( (source & InputDevice.SOURCE_CLASS_JOYSTICK) == InputDevice.SOURCE_CLASS_JOYSTICK )
+			s += "class joystick ";
+		if( (source & InputDevice.SOURCE_CLASS_BUTTON) == InputDevice.SOURCE_CLASS_BUTTON )
+			s += "class button ";
+		if( (source & InputDevice.SOURCE_CLASS_POINTER) == InputDevice.SOURCE_CLASS_POINTER )
+			s += "class pointer ";
+		if( (source & InputDevice.SOURCE_CLASS_POSITION) == InputDevice.SOURCE_CLASS_POSITION )
+			s += "class position ";
+		if( (source & InputDevice.SOURCE_CLASS_TRACKBALL) == InputDevice.SOURCE_CLASS_TRACKBALL )
+			s += "class trackball ";
+
+		return s;
+	}
+
 	private void pushText(String s) {
 		Log.v("Event log", s);
 		mMsg.add(s);
 	}
 
-	private void updateText() {
+	private int updateText() {
 		String s = mMsg.poll();
 		if( s == null ) {
 			s = "";
@@ -276,6 +301,13 @@ public class AccelerometerPlayActivity extends Activity {
 			public void run() {
 				mText.setText(s2);
 		}});
+		if( mMsg.size() > 15 )
+			return 20;
+		if( mMsg.size() > 8 )
+			return 100;
+		if( mMsg.size() > 4 )
+			return 500;
+		return 1000;
 	}
 
     class SimulationView extends View implements SensorEventListener {
